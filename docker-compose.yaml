@@ -1,0 +1,48 @@
+services:
+  bot:
+    restart: always
+    build: .
+    env_file: ".env"
+    networks:
+      - bot_network
+
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  redis:
+    image: redis:8-alpine
+    restart: always
+    env_file: ".env"
+    networks:
+      - bot_network
+    ports:
+      - 6379:6379
+
+  db:
+    image: postgres:18-alpine
+    restart: always
+    shm_size: 128mb
+    env_file: ".env"
+    networks:
+      - bot_network
+    ports:
+      - 5432:5432
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  bot_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
